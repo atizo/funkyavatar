@@ -27,11 +27,14 @@ import re
 import colorsys
 import hashlib
 import sys
+import pyparsing
 
 class FunkyAvatar(object):
-    def __init__(self, width=200, height=200):
-        self.width = width
-        self.height = height
+    NUM_SHAPES = 3
+
+    def __init__(self, size):
+        self.width = size
+        self.height = size
         self.surface = None
 
     def generate(self, hash_value):
@@ -44,55 +47,57 @@ class FunkyAvatar(object):
         self.surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, self.width, self.height)
 
         cr = cairo.Context(self.surface)
-        # cr.scale(self.width/200, self.height/200)
-        cr.translate(300, 300)
+        cr.scale(self.width/200, self.height/200)
+        #cr.translate(300, 300)
 
         # white background
         cr.save()
-        cr.rectangle(0, 0, 200, 200)
+        cr.rectangle(0, 0, self.width, self.height)
         cr.set_source_rgb(1, 1, 1);
         cr.fill()
         cr.restore()
 
-        # shape 1
-        cr.save()
-        x = 200
-        y = 200
-        cr.translate(x, y)
-        cr.rotate(conf['shape1_angle'])
-        cr.translate(-x, -y)
+        shapes_data = [
+            {
+                'svg_path': 'M 110.87651,1.4697337 C 91.002422,109.73123 134.75067,88.526513 200.30993,86.719128 279.03698,84.563143 316.53623,131.27114 327.39951,175.62954 339.95157,226.88378 301.7724,285.46005 212.86199,273.43099 123.95157,261.40194 3.1380145,167.78451 -0.52300238,113.91525 -3.2618575,73.614953 73.220343,52.200969 110.87651,1.4697337 z',
+                'rotation_center': (200, 200),
+                'translation': (0, -100),
+            },
+            {
+                'svg_path': 'M 13.912833,268.78692 C 28.644067,339.98789 117.84607,325.24812 166.13559,186.12833 200.50847,87.101695 229.97094,53.547215 322.45036,1.1694915 275.80145,78.917676 270.89104,156.66586 303.62711,261.42131 c 29.0192,92.86141 -15.79457,111.28576 -88.3874,75.29298 -73.0216,-36.20537 -69.34513,-21.72051 -124.397095,25.37046 -57.539388,49.21869 -108.847458,17.18644 -76.929782,-93.29783 z',
+                'rotation_center': (220, 250),
+                'translation': (-220, -250),
+            },
+            {
+                'svg_path': 'M 124.39709,-0.30024213 C 195.59807,36.527845 163.44038,180.61923 153.85956,214.93947 c -10.29388,36.87454 -4.092,71.20096 55.65134,94.11622 58.89685,22.59057 88.3874,12.27604 124.39709,37.64649 33.59834,23.67154 29.46247,78.56658 17.18644,91.66102 C 335.5448,391.71429 310.65321,371.44073 223.42373,363.07022 60.561742,347.52058 -47.467312,342.61017 18.823244,211.66586 79.32348,92.15923 126.10855,60.534344 124.39709,-0.30024213 z',
+                'rotation_center': (90, 270),
+                'translation': (-90, -70),
+            },
+        ]
+        print shapes_data[0]
+        # create shape objects
+        shapes = []
+        for i in range(0, len(shapes_data)):
+            s = Shape(shapes_data[i]['svg_path'], shapes_data[i]['translation'], shapes_data[i]['rotation_center'], conf['shape_angles'][i], conf['colored_shape_index'] == i and conf['color'] or None)
+            shapes.append(s)
 
-        self.__draw_shape1(cr)
-        self.__set_gradient_pattern(cr, conf['color'])
-        cr.fill()
-        cr.restore()
+        # put to colored shape at the end
+        s = shapes.pop(conf['colored_shape_index'])
+        shapes.append(s)
 
-        # shape 2
+        # draw shapes
+        for s in shapes:
+            cr.save()
+            s.draw(cr)
+            cr.restore()
+
+        # debug border
         # cr.save()
-        # cr.translate(0.3, 0.1)
-        # cr.rotate(0*math.pi)
-        # cr.scale(1, 1)
-        # self.__draw_shape2(cr)
-        # self.__set_gradient_pattern(cr, hash_value)
-        # cr.fill()
+        # cr.rectangle(-10, -10, 220, 220)
+        # cr.set_source_rgb(0, 0, 0);
+        # cr.set_line_width(20)
+        # cr.stroke()
         # cr.restore()
-
-        # shape 3
-        # cr.save()
-        # cr.translate(0.7, 0.1)
-        # cr.rotate(0*math.pi)
-        # cr.scale(1, 1)
-        # self.__draw_shape3(cr)
-        # self.__set_gradient_pattern(cr, hash_value)
-        # cr.fill()
-        # cr.restore()
-
-        cr.save()
-        cr.rectangle(-10, -10, 220, 220)
-        cr.set_source_rgb(0, 0, 0);
-        cr.set_line_width(20)
-        cr.stroke()
-        cr.restore()
 
     def __get_conf(self, hash_value):
         hash_value = hash_value.lower()
@@ -104,56 +109,17 @@ class FunkyAvatar(object):
         b = color & 255
         conf['color'] = (r, g, b)
 
-        conf['colored_shape'] = int(float(int(hash_value[6], 16))/16 * 3)
+        conf['colored_shape_index'] = int(float(int(hash_value[6], 16))/16 * FunkyAvatar.NUM_SHAPES)
 
         angles = int(hash_value[7:19], 16)
-        conf['shape1_angle'] = float(angles >> 24 & 4095)/4095 * 2.0*math.pi
-        conf['shape2_angle'] = float(angles >> 12 & 4095)/4095 * 2.0*math.pi
-        conf['shape3_angle'] = float(angles & 4095)/4095 * 2.0*math.pi
+        conf['shape_angles'] = {
+            0: float(angles >> 24 & 4095)/4095 * 2.0*math.pi,
+            1: float(angles >> 12 & 4095)/4095 * 2.0*math.pi,
+            2: float(angles & 4095)/4095 * 2.0*math.pi,
+        }
 
         print conf
         return conf
-
-    def __set_gradient_pattern(self, cr, color):
-        r, g, b = color
-        r, g, b = float(r)/255, float(g)/255, float(b)/255
-
-        # TODO: why isn't v=1.0 white?
-        h, s, v = colorsys.rgb_to_hsv(r, g, b)
-        r1, g1, b1 = colorsys.hsv_to_rgb(h, s, v+0.4)
-
-        h, s, v = colorsys.rgb_to_hsv(r, g, b)
-        r2, g2, b2 = colorsys.hsv_to_rgb(h, s, v-0.4)
-
-        # TODO: gradient has to be aligned
-        pat = cairo.LinearGradient(0.0, 0.0, 0.0, 1.0)
-        pat.add_color_stop_rgba(0, r2, g2, b2, 0.8)
-        pat.add_color_stop_rgba(1, r1, g1, b1, 0.8)
-        cr.set_source(pat)
-
-    def __draw_shape1(self, cr):
-        cr.move_to(260.00001,95.5)
-        cr.rel_curve_to(56.55496,10.48079, 82.61749,54.65247, 77.85714,112.14286)
-        cr.rel_curve_to(-4.64286,56.07142, -103.65592,87.85722, -186.42857,48.21432)
-        cr.curve_to(53.02906, 208.72994, 3.36238, 147.56320, 7.47469, 110.89573)
-        cr.curve_to(12.215894, 68.62078, 50.560167, 80.61123, 118.21429, 0.5)
-        cr.rel_curve_to(-7.08555,41.02475, -6.81073,73.60264, 11.26333,84.55833)
-        cr.rel_curve_to(31.16131,18.88859, 69.25437,-0.91254, 130.52239,10.44167)
-        cr.close_path()
-
-    def __draw_shape2(self, cr):
-        cr.move_to(0, 0)
-        cr.arc(0.2, 0.1, 0.1, -math.pi/2, 0) # Arcr(cx, cy, radius, start_angle, stop_angle)
-        cr.line_to(0.5, 0.1) # Line to (x,y)
-        cr.curve_to(0.5, 0.2, 0.5, 0.4, 0.2, 0.8) # Curve(x1, y1, x2, y2, x3, y3)
-        cr.close_path()
-
-    def __draw_shape3(self, cr):
-        cr.move_to(0, 0)
-        cr.arc(0.2, 0.1, 0.1, -math.pi/2, 0) # Arc(cx, cy, radius, start_angle, stop_angle)
-        cr.line_to(0.5, 0.1) # Line to (x,y)
-        cr.curve_to(0.5, 0.2, 0.5, 0.4, 0.2, 0.8) # Curve(x1, y1, x2, y2, x3, y3)
-        cr.close_path()
 
     def save_to_file(self, filename):
         if self.surface:
@@ -161,6 +127,92 @@ class FunkyAvatar(object):
             return True
         else:
             return False
+
+
+class Shape(object):
+    def __init__(self, svg_path, translation, rotation_center, rotation_angle, color=None):
+        self.svg_path = svg_path
+        self.translation = translation
+        self.rotation_center = rotation_center
+        self.rotation_angle = rotation_angle
+        self.color = color
+
+    def draw(self, cr):
+        tx, ty = self.translation
+        cr.translate(tx, ty)
+        self.__rotate(cr)
+        self.__render_svg_path(cr)
+        self.__set_gradient_pattern(cr)
+        cr.fill()
+
+    def __rotate(self, cr):
+        cx, cy = self.rotation_center
+        cr.translate(cx, cy)
+        cr.rotate(self.rotation_angle)
+        cr.translate(-cx, -cy)
+
+    def __render_svg_path(self, cr):
+        # define svg path grammar
+        dot = pyparsing.Literal(".")
+        comma = pyparsing.Literal(",").suppress()
+        floater = pyparsing.Combine(pyparsing.Optional("-") + pyparsing.Word(pyparsing.nums) + dot + pyparsing.Word(pyparsing.nums))
+        floater.setParseAction(lambda toks:float(toks[0]))
+        couple = floater + comma + floater
+        M_command = "M" + pyparsing.Group(couple)
+        m_command = "m" + pyparsing.Group(couple)
+        C_command = "C" + pyparsing.OneOrMore(pyparsing.Group(couple + couple + couple))
+        c_command = "c" + pyparsing.OneOrMore(pyparsing.Group(couple + couple + couple))
+        L_command = "L" + pyparsing.OneOrMore(pyparsing.Group(couple))
+        l_command = "l" + pyparsing.OneOrMore(pyparsing.Group(couple))
+        Z_command = pyparsing.Literal("Z") ^ pyparsing.Literal("z")
+        svgcommand = M_command | m_command | C_command | c_command | L_command | l_command | Z_command
+        phrase = pyparsing.OneOrMore(pyparsing.Group(svgcommand)) 
+
+        tokens = phrase.parseString(self.svg_path)
+        for token in tokens:
+            command = token[0]
+            if len(token) > 1:
+                values = token[1:]
+
+            if command == 'M':
+                v = values[0]
+                cr.move_to(v[0], v[1])
+            elif command == 'C':
+                for v in values:
+                    cr.curve_to(v[0], v[1], v[2], v[3], v[4], v[5])
+            elif command == 'c':
+                for v in values:
+                    cr.rel_curve_to(v[0], v[1], v[2], v[3], v[4], v[5])
+            elif command == 'L':
+                for v in values:
+                    cr.line_to(v[0], v[1])
+            elif command == 'l':
+                for v in values:
+                    cr.rel_line_to(v[0], v[1])
+            elif command == 'z' or command == 'Z':
+                cr.close_path()
+
+    def __set_gradient_pattern(self, cr):
+        # use gray if no color is given
+        r1, g1, b1 = 0.6, 0.6, 0.6
+        r2, g2, b2 = 0.8, 0.8, 0.8
+
+        if self.color:
+            r, g, b = self.color
+            r, g, b = float(r)/255, float(g)/255, float(b)/255
+
+            # TODO: why isn't v=1.0 white?
+            h, s, v = colorsys.rgb_to_hsv(r, g, b)
+            r1, g1, b1 = colorsys.hsv_to_rgb(h, s, v+0.4)
+
+            h, s, v = colorsys.rgb_to_hsv(r, g, b)
+            r2, g2, b2 = colorsys.hsv_to_rgb(h, s, v-0.4)
+
+        # TODO: gradient has to be aligned
+        pat = cairo.LinearGradient(0.0, 0.0, 0.0, 1.0)
+        pat.add_color_stop_rgba(0, r2, g2, b2, 0.8)
+        pat.add_color_stop_rgba(1, r1, g1, b1, 0.8)
+        cr.set_source(pat)
 
 
 if __name__ == '__main__':
@@ -171,6 +223,6 @@ if __name__ == '__main__':
     email = sys.argv[1].lower()
     hash_value = hashlib.md5(email).hexdigest()
 
-    a = FunkyAvatar(1000, 1000)
+    a = FunkyAvatar(200)
     a.generate(hash_value)
     a.save_to_file('avatar-%s.png' % email)
