@@ -71,7 +71,7 @@ class FunkyAvatar(object):
         cr.fill()
         cr.restore()
 
-        # scale to surface size
+        # scale to surface size (shapes have been created for 200x200)
         cr.scale(float(self.width)/200.0, float(self.height)/200.0)
 
         # create shape objects
@@ -226,10 +226,10 @@ class Shape(object):
             r, g, b = float(r)/255, float(g)/255, float(b)/255
 
             h, s, v = colorsys.rgb_to_hsv(r, g, b)
-            r1, g1, b1 = colorsys.hsv_to_rgb(h, s, v+0.2)
+            r1, g1, b1 = colorsys.hsv_to_rgb(h, s, min(v+0.2, 1.0))
 
             h, s, v = colorsys.rgb_to_hsv(r, g, b)
-            r2, g2, b2 = colorsys.hsv_to_rgb(h, s, v-0.2)
+            r2, g2, b2 = colorsys.hsv_to_rgb(h, s, max(v-0.2, 0))
 
         if self.gradient_direction == 1:
             pat = cairo.LinearGradient(0.0, 0.0, 0.0, 200.0-ty)
