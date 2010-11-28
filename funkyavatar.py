@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Atizo - The Open Innovation Platform
-# http://www.atizo.com/
+# funkyavatar - avatar creation gone funky
+# http://labs.atizo.com/software/#funkyavatar
 #
-# Copyright (c) 2008-2010 Atizo AG. All rights reserved.
+# Copyright (c) 2010 Atizo AG. All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -252,10 +252,12 @@ if __name__ == '__main__':
 
     size = int(sys.argv[1])
     email = sys.argv[2].lower()
-    hash_value = hashlib.md5(email).hexdigest()
 
     a = FunkyAvatar(size)
+
+    hash_value = hashlib.md5(email).hexdigest()
     a.generate(hash_value)
+
     a.save_png('avatar-%d-%s.png' % (size, email))
 
     # alternatively you can use:

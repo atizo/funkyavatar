@@ -1,0 +1,64 @@
+What is funkyavatar?
+--------------------
+
+It is an avatar image creation script written in Python that draws
+funky avatars for given (email-)hashes.
+
+If you don't like identicon (too algorithmic) or wavatar/monsterid
+(too childish), funkyavatar is for you!
+
+http://labs.atizo.com/software/#funkyavatar
+
+
+
+How does it look like?
+----------------------
+
+Check out the example images in the source directory.
+
+
+
+How does it work?
+-----------------
+
+It uses three different shapes that are colored, moved and rotated
+depending on the given hash. One shape is colored, the other two are
+gray.
+
+The shapes are stored as SVG paths, so feel free to draw new ones
+and play...
+
+
+
+How can I use it?
+-----------------
+
+You need to install python-cairo and python-pyparsing and add funkyavatar to
+your PYTHONPATH.
+
+Then use it like this:
+
+################################################################################
+from funkyavatar import FunkyAvatar
+import hashlib
+
+size = 200
+email = 'asdf@asdf.com'
+
+a = FunkyAvatar(size)
+
+hash_value = hashlib.md5(email).hexdigest()
+a.generate(hash_value)
+
+a.save_png('avatar.png')
+################################################################################
+
+
+
+Am I allowed to use/modified it?
+--------------------------------
+
+funkyavatar is free software, licensed under the terms of the GNU
+General Public License v2. See COPYING for more details.
+
+Copyright (c) 2010 Atizo AG. All rights reserved.
