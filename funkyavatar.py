@@ -48,7 +48,9 @@ class FunkyAvatar(object):
 
         cr = cairo.Context(self.surface)
         cr.scale(self.width/200, self.height/200)
-        #cr.translate(300, 300)
+
+        # debug
+        # cr.translate(300, 300)
 
         # white background
         cr.save()
@@ -74,11 +76,13 @@ class FunkyAvatar(object):
                 'translation': (-90, -70),
             },
         ]
-        print shapes_data[0]
+        
         # create shape objects
         shapes = []
         for i in range(0, len(shapes_data)):
-            s = Shape(shapes_data[i]['svg_path'], shapes_data[i]['translation'], shapes_data[i]['rotation_center'], conf['shape_angles'][i], conf['colored_shape_index'] == i and conf['color'] or None)
+            tx1, ty1 = shapes_data[i]['translation']
+            tx2, ty2 = conf['shape_translations'][i]
+            s = Shape(shapes_data[i]['svg_path'], (tx1+tx2, ty1+ty2), shapes_data[i]['rotation_center'], conf['shape_angles'][i], conf['colored_shape_index'] == i and conf['color'] or None)
             shapes.append(s)
 
         # put to colored shape at the end
@@ -111,14 +115,27 @@ class FunkyAvatar(object):
 
         conf['colored_shape_index'] = int(float(int(hash_value[6], 16))/16 * FunkyAvatar.NUM_SHAPES)
 
-        angles = int(hash_value[7:19], 16)
+        angles = int(hash_value[7:13], 16)
         conf['shape_angles'] = {
-            0: float(angles >> 24 & 4095)/4095 * 2.0*math.pi,
-            1: float(angles >> 12 & 4095)/4095 * 2.0*math.pi,
-            2: float(angles & 4095)/4095 * 2.0*math.pi,
+            0: float(angles >> 16 & 255)/255 * 2.0*math.pi,
+            1: float(angles >> 8 & 255)/255 * 2.0*math.pi,
+            2: float(angles & 255)/255 * 2.0*math.pi,
         }
 
-        print conf
+        # variable shape translation between (-50, -50) and (50, 50)
+        translations = int(hash_value[14:26], 16)
+        tx1 = float(translations >> 40 & 255)/255 * 100 - 50
+        ty1 = float(translations >> 32 & 255)/255 * 100 - 50
+        tx2 = float(translations >> 24 & 255)/255 * 100 - 50
+        ty2 = float(translations >> 16 & 255)/255 * 100 - 50
+        tx3 = float(translations >> 8 & 255)/255 * 100 - 50
+        ty3 = float(translations & 255)/255 * 100 - 50
+        conf['shape_translations'] = {
+            0: (tx1, ty1),
+            1: (tx2, ty2),
+            2: (tx3, ty3),
+        }
+
         return conf
 
     def save_to_file(self, filename):
@@ -166,7 +183,7 @@ class Shape(object):
         l_command = "l" + pyparsing.OneOrMore(pyparsing.Group(couple))
         Z_command = pyparsing.Literal("Z") ^ pyparsing.Literal("z")
         svgcommand = M_command | m_command | C_command | c_command | L_command | l_command | Z_command
-        phrase = pyparsing.OneOrMore(pyparsing.Group(svgcommand)) 
+        phrase = pyparsing.OneOrMore(pyparsing.Group(svgcommand))
 
         tokens = phrase.parseString(self.svg_path)
         for token in tokens:
