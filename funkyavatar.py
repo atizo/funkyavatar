@@ -60,8 +60,6 @@ class FunkyAvatar(object):
             raise Exception('hash value has not length 32')
         conf = self.__get_conf(hash_value)
 
-        if self.surface:
-            self.surface.destroy()
         self.surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, self.width, self.height)
 
         cr = cairo.Context(self.surface)
