@@ -21,13 +21,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #
 
+from StringIO import StringIO
 import cairo
 import math
-import re
+import pyparsing
 import colorsys
 import hashlib
 import sys
-import pyparsing
 
 
 SHAPES = [
@@ -96,12 +96,20 @@ class FunkyAvatar(object):
             s.draw(cr)
             cr.restore()
 
-    def save_to_file(self, filename):
+    def save_png(self, filename):
         if self.surface:
             self.surface.write_to_png(filename)
             return True
         else:
             return False
+
+    def get_png_data(self):
+        if self.surface:
+            s = StringIO()
+            self.surface.write_to_png(s)
+            return s.getvalue()
+        else:
+            return None
 
     def __get_conf(self, hash_value):
         hash_value = hash_value.lower()
@@ -250,4 +258,7 @@ if __name__ == '__main__':
 
     a = FunkyAvatar(size)
     a.generate(hash_value)
-    a.save_to_file('avatar-%d-%s.png' % (size, email))
+    a.save_png('avatar-%d-%s.png' % (size, email))
+
+    # alternatively you can use:
+    # data =  a.get_png_data()
